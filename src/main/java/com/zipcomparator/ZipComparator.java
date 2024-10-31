@@ -1,16 +1,15 @@
 package com.zipcomparator;
 
-import org.apache.commons.io.FileUtils;
-
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.Enumeration;
 
-public class Main {
+public class ZipComparator {
     public static List<String> compareZipFiles(String filePath1, String filePath2) throws IOException {
         List<String> differences = new ArrayList<>();
         ZipFile zipFile1 = new ZipFile(new File(filePath1));
@@ -38,8 +37,12 @@ public class Main {
             if (fileList2.contains(file)) {
                 ZipEntry entry1 = zipFile1.getEntry(file);
                 ZipEntry entry2 = zipFile2.getEntry(file);
-                if (!FileUtils.contentEquals(zipFile1.getInputStream(entry1), zipFile2.getInputStream(entry2))) {
-                    differences.add("Content difference in file: " + file);
+
+                try (InputStream stream1 = zipFile1.getInputStream(entry1);
+                     InputStream stream2 = zipFile2.getInputStream(entry2)) {
+                    if (!compareStreams(stream1, stream2)) {
+                        differences.add("Content difference in file: " + file);
+                    }
                 }
             }
         }
@@ -58,6 +61,17 @@ public class Main {
             fileList.add(entry.getName());
         }
         return fileList;
+    }
+
+    private static boolean compareStreams(InputStream stream1, InputStream stream2) throws IOException {
+        int byte1, byte2;
+        while ((byte1 = stream1.read()) != -1) {
+            byte2 = stream2.read();
+            if (byte1 != byte2) {
+                return false;
+            }
+        }
+        return stream2.read() == -1;
     }
 
     public static void main(String[] args) {
